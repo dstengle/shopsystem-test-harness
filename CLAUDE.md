@@ -64,12 +64,39 @@ risks, deferred work) are filed as beads in this repo.
 - Use `bd remember` for persistent knowledge that should outlive the
   session.
 
-## Host prerequisites for the SessionStart activation hook
+## Session start: arming the inbox watcher via the in-session Monitor
 
-The canonical `.claude/settings.json` that `shop-templates bootstrap`
-writes for this shop arms a line-buffered `inotifywait` watcher over
-the inbound mailbox surface on each Claude Code SessionStart. That
-hook depends on two host-level packages being present on PATH:
+This shop is reactive on session start: when a new message lands in
+`inbox/`, the router must learn about it without polling. The activation
+mechanism is the in-session **Monitor** tool — not a `SessionStart` hook
+in `.claude/settings.json`. (Earlier iterations of this template tried
+the hook path; Claude Code awaits `SessionStart` hooks synchronously, so
+a foreground `inotifywait -m` pipeline never returns and session startup
+hangs. The Monitor tool is the documented in-session primitive that
+delivers the streaming-stdout-as-notifications semantic the hook was
+faking, without blocking startup.)
+
+**At session start, the router must arm the in-session Monitor tool on
+the following pipeline (watch target: `inbox/`):**
+
+```
+stdbuf -oL inotifywait -m -e create,moved_to inbox/
+```
+
+Before arming the Monitor, the router must verify that both
+`inotifywait` and `stdbuf` are on PATH (for example, via
+`command -v inotifywait` and `command -v stdbuf`). If either executable
+is missing, the router must refuse to arm the Monitor and surface a
+visible diagnostic naming the missing prerequisite — do not silently
+fall back to a no-watcher state, and do not arm the watcher via a
+`SessionStart` hook in `.claude/settings.json` as a fallback. A
+no-watcher session loses the shop's reactivity invariant; the operator
+needs to see the diagnostic and install the missing package.
+
+### Host prerequisites
+
+The Monitor activation pipeline named above depends on two host-level
+packages being present on PATH:
 
 - **inotify-tools** — provides the `inotifywait` binary used to watch
   the inbound mailbox surface for new messages.
@@ -77,9 +104,6 @@ hook depends on two host-level packages being present on PATH:
   on the `inotifywait` invocation so events stream as they happen
   rather than batching into a pipe buffer.
 
-If your host is missing either package, the activation hook surfaces a
-visible diagnostic on stderr identifying the missing prerequisite and
-exits non-zero rather than silently degrading to a no-watcher state.
 Install both packages through your distro's package manager (e.g.
 `apt-get install inotify-tools coreutils` on Debian/Ubuntu).
 

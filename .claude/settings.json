@@ -1,15 +1,3 @@
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "command -v inotifywait >/dev/null 2>&1 || { echo 'ERROR: inotifywait not found on PATH; install inotify-tools (and coreutils, which provides stdbuf) on this host.' >&2; exit 1; }; command -v stdbuf >/dev/null 2>&1 || { echo 'ERROR: stdbuf not found on PATH; install coreutils on this host.' >&2; exit 1; }; stdbuf -oL inotifywait -m -e create,moved_to inbox/ 2>&1 | /usr/bin/grep --line-buffered ''"
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }
